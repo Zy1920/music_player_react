@@ -1,15 +1,83 @@
 ﻿## 一个基于React的适配PC端和移动端的轻量音乐播放器
 
-> 技术：React16
+### 音乐列表数据
 
-之前基于Vue写了一个播放器，带各种功能，最后把自己绕死了。这次用React重写了个，舍弃了那些没用的功能，只保留了基本功能。并且利用媒体查询适配移动端和手机端。组件之间传值利用props，这个播放器先供自己用，以后会抽离成为一个插件。如果感觉不错给个星星~
+- 音乐名称/歌手等文本信息
+- 专辑图片展示
 
-[点击查看项目](http://akongkong.cn/build/)(可能因为会资源问题有歌曲播放不出来，如果发现我会及时解决的，目前是好的)</br>
-[项目文章](https://segmentfault.com/a/1190000012628577)
+### 播放音频数据
 
-图片演示：
+- 网易音乐api地址：
 
-![image](https://github.com/capslocktao/react-music-player/blob/master/show.gif)
+  https://github.com/Binaryify/NeteaseCloudMusicApi
+
+
+- ipfs-api：https://github.com/ipfs/js-ipfs-api
+
+  - 初始化环境端口号开启服务：
+
+  ```shell
+  # Show the ipfs config API port to check it is correct
+  > ipfs config Addresses.API
+  /ip4/127.0.0.1/tcp/5001
+  # Set it if it does not match the above output
+  > ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
+  # Restart the daemon after changing the config
+
+  # Run the daemon
+  > ipfs daemon
+  ```
+
+  - cat获取数据
+
+  ```react
+  ipfs.files.cat("QmY4NqRyr9SebC3P6W3pzg22UK3QsJNDKGzDHqQZsEyPi3", function (err, file) {
+      if (err) {
+          throw err
+      }
+      const json = file.toString('utf8');
+      console.log(json)
+      that.setState({
+          songInfo: JSON.parse(json)
+      })
+
+  })
+  ```
+
+  - add 添加数据
+
+  ```js
+  const ipfsAPI = require('ipfs-api')
+  const ipfs = ipfsAPI('localhost', '5001', {protocol: 'http'})
+  const buffer = Buffer.from('hello ipfs-api!')
+  ipfs.add(buffer)
+      .then( rsp => console.log(rsp[0].hash))
+  	.catch(e => console.error(e))
+  ```
+
+  ​
+
+- 设置cors
+
+```shell
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "GET", "POST", "OPTIONS"]'
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Credentials '["true"]'
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Headers '["Authorization"]'
+ipfs config --json API.HTTPHeaders.Access-Control-Expose-Headers '["Location"]'
+```
+
+### ipns
+
+- 绑定ipfs节点, 把一个文件/文件夹的hash发布到自己的ID下
+
+  `ipfs name publish QmSx37PT8iV2XxzfHLMRYSxZEt87uE3jdQwCyz7otd5ktP`
+
+- 查看节点绑定的ipfs路径
+
+  `ipfs name resolve [peerId]`
+
+- 离线客户端框架： https://github.com/electron/electron
 
 ### 功能
  * 播放，暂停
@@ -26,8 +94,6 @@
 
 ### 说明
 ```
-git clone git@github.com:capslocktao/react-music-player.git
-
 //安装依赖
 npm install
 
@@ -45,36 +111,22 @@ npm run build
 
 info接收的参数类型为一个对象数组
 ```
-    render() {
-        const songInfo = [
-            {
-                src:"http://fs.w.kugou.com/201712281346/32b6de4127502b0f2defb32a859b7278/G048/M00/1B/0F/EJQEAFYl4ZuAUSEVAEIa293rBH4619.mp3",
-                artist:"陶喆",
-                name:"Melody",
-                img:"http://imge.kugou.com/stdmusic/20150718/20150718174252663587.jpg",
-                id:"66575568441"
-            },
-            {
-                src:"http://fs.w.kugou.com/201712281315/2e497482c4283748d6b3d3e7912caada/G010/M07/1F/1D/qoYBAFUKLG2AFwOuAD6hYqqxfPE635.mp3",
-                artist:"周杰伦",
-                name:"千里之外",
-                img:"http://imge.kugou.com/stdmusic/20170728/20170728122746411503.jpg",
-                id:"43245456534"
+    componentDidMount() {
+        // 请求网络音乐列表json
+        //QmcH9Nudnt439Hz3AV6JThPRPPnztyy72Gmws9sJ49R7n6
+        ipfs.files.cat('QmcH9Nudnt439Hz3AV6JThPRPPnztyy72Gmws9sJ49R7n6', (err, file) => {
+            if (err) {
+                throw err
             }
-        ]
-    return (
-      <div className="App">
-          <ReactMusicPlayer
-            info={songInfo}
-            onDel = {this.delSong}
-          />
-      </div>
-    );
-  }
-```
-onDel是当删除播放列表内的歌曲时，触发的函数
-```
-    delSong(i,id){
-        //接收两个参数：i为删除的歌曲在播放列表中的位置；id为删除掉的歌曲的id
+            const jsonStr = file.toString('utf8');
+            console.log(jsonStr);
+
+
+            this.setState({
+                songInfo: JSON.parse(jsonStr)
+            })
+
+        })
     }
+
 ```
